@@ -20,8 +20,15 @@
 //! - Undo values can be stored in multiple stacks, if needed. A use case for this can be seen in modern 3D Animation software, where the Scene undo is usually separated from the Viewport undo.
 //! - Provides a simple trait (Undoable) with a single "restore" method that allows automatically re-applying the restored value to the application data.
 
+#![warn(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
+#![no_std]
+#[cfg(feature = "std")] extern crate std;
+#[cfg(feature = "std")] pub use std::{print, println};
 
-use std::marker::Sized;
+extern crate alloc;
+
+use core::marker::Sized;
+use alloc::{vec, vec::Vec};
 
 /// When calling undo() or redo(), the restore() function is always called and applies
 /// this value TO the project and returns a value with the previous state FROM the project.
@@ -104,7 +111,9 @@ impl<T> UndoStack<T> where T:Undoable {
                 to_stack.push(old_value)
             }
             None => {
-                if self.verbose { println!("UndoStack: No value to undo/redo.") }
+                #[cfg(feature = "std")]{
+                    if self.verbose { println!("UndoStack: No value to undo/redo.") }
+                }
             }
         }
         //Return an option with whatever is at the top of the stack
@@ -136,9 +145,17 @@ impl<T> UndoStack<T> where T:Undoable {
     pub fn start_buffer(&mut self, value:T){
         if let Some(ref value) = self.undo_buffer{
             self.push(value.clone());
-            if self.verbose { println!("UndoStack: Warning, previous undo value was commited automatically") }
+            if self.verbose {
+                #[cfg(feature = "std")]{
+                    println!("UndoStack: Warning, previous undo value was commited automatically")
+                }
+            }
         }
-        if self.verbose { println!( "UndoStack: Initiating undo buffer..."); }
+        if self.verbose {
+            #[cfg(feature = "std")]{
+                println!( "UndoStack: Initiating undo buffer...");
+            }
+        }
         self.undo_buffer = Some(value);
     }
 
@@ -149,7 +166,9 @@ impl<T> UndoStack<T> where T:Undoable {
             if *value != final_value{
                 self.push(value.clone());
             } else  if self.verbose {
-                println!("UndoStack: Skipping commit, values don't differ.");
+                #[cfg(feature = "std")]{
+                    println!("UndoStack: Skipping commit, values don't differ.");
+                }
             }
             self.undo_buffer = None;
         } else if self.verbose {
