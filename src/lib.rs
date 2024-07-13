@@ -27,14 +27,14 @@
 
 extern crate alloc;
 
-use core::marker::Sized;
 use alloc::{vec, vec::Vec};
 
 /// When calling undo() or redo(), the restore() function is always called and applies
 /// this value TO the project and returns a value with the previous state FROM the project.
 /// The "Undoable" type, usually an enum with many variants, needs to know how to restore itself,
 /// and may need to contain all information required to place it correctly into the project.
-pub trait Undoable where Self:Sized + Clone + PartialEq {
+pub trait Undoable
+where Self:Clone + PartialEq {
     type ProjectType;
     fn restore(&self, target:&mut Self::ProjectType) -> Self;
 }
