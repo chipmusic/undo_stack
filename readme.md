@@ -6,13 +6,13 @@ Calling undo and then pushing a new value clears the redo stack, since history w
 
 When calling undo and redo, the restored values are automatically restored to an associated Project type (the struct containing the data) via the `Undoable` trait, which simply contains a "restore" method where you must provide a way for the restored value to be re-applied to the Project type.
 
-# Creating undo values for continuous changes.
+## Creating undo values for continuous changes.
 
 A common case in applications with GUIs is a value that needs to be udpdated continuously on the screen while the user interacts with it (i.e. dragging a slider), but only its initial state and final will be used for undo purposes.
 
-You can easily achieve this using the [`UndoStack::start_buffer`] and [`UndoStack::commit_buffer`] methods at the beginning and end of the user interaction, instead of "push". The final state is only used to compare with the initial state, and nothing is actually stored if they're the same.
+You can easily achieve this using the `UndoStack::start_buffer` and `UndoStack::commit_buffer` methods at the beginning and end of the user interaction, instead of "push". The final state is only used to compare with the initial state, and nothing is actually stored if they're the same.
 
-# Motivation.
+## Motivation.
 
 I created this crate for personal use, and to satisfy a few requirements I wished for:
 - As minimal as possible while still being useful.
