@@ -1,3 +1,4 @@
+//! *Work in Progress. Currently does not work outside project it was created for.*
 //! A Minimalistic Undo/Redo library created for personal projects. Use at your own risk!
 //!
 //! Whenever your application data changes to a new value, you can push the old value into the UndoStack using the [`UndoStack::push`] method. Calling [`UndoStack::undo`] will walk through the stack returning past_stack values, but possible values above the current position are still available via the [`UndoStack::redo`] method, which will cause the stack to walk back into the present.
@@ -36,7 +37,7 @@ use alloc::{vec, vec::Vec};
 pub trait Undoable
 where Self:Clone + PartialEq {
     type ProjectType;
-    fn restore(&self, target:&mut Self::ProjectType) -> Self;
+    fn restore(self, target:&mut Self::ProjectType) -> Self;
 }
 
 
@@ -93,6 +94,8 @@ impl<T> UndoStack<T> where T:Undoable {
     /// The internal undo workhorse: moves the values to/from the appropriate stack.
     /// Returns an option with the top value being moved.
     fn move_undo_value(&mut self, project:&mut T::ProjectType, is_redo:bool) -> Option<&T> {
+        let past_len = self.past_stack.len();
+        let future_len = self.future_stack.len();
         // Set appropriate stacks, depending on "undo" or "redo"
         let from_stack:&mut Vec<T>;
         let to_stack:&mut Vec<T>;
@@ -108,11 +111,18 @@ impl<T> UndoStack<T> where T:Undoable {
         match from_stack.pop() {
             Some(value) => {
                 let old_value = value.restore(project);
-                to_stack.push(old_value)
+                to_stack.push(old_value);
+                #[cfg(feature = "std")]{
+                    if self.verbose{
+                        println!(
+                            "UndoStack: moving value. Past values:{}, future values:{}", past_len, future_len
+                        );
+                    }
+                }
             }
             None => {
                 #[cfg(feature = "std")]{
-                    if self.verbose { println!("UndoStack: No value to undo/redo.") }
+                    if self.verbose { println!("UndoStack: No value to undo/redo."); }
                 }
             }
         }
