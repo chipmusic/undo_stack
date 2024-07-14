@@ -53,12 +53,12 @@ pub struct UndoStack<T> where T:Undoable {
 impl<T> UndoStack<T> where T:Undoable {
 
     /// Creates a new, empty Undo stack.
-    pub fn new() -> Self {
+    pub fn new(verbose:bool) -> Self {
         Self {
             future_stack: vec![],
             past_stack: vec![],
             undo_buffer: None,
-            verbose: true,
+            verbose,
         }
     }
 
@@ -201,5 +201,5 @@ impl<T> UndoStack<T> where T:Undoable {
 
 
 impl<T> Default for UndoStack<T> where T: Undoable {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self { Self::new(false) }
 }
