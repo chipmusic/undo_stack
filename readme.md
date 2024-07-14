@@ -1,3 +1,4 @@
+*Work in Progress. Currently does not work outside project it was created for.*
 A Minimalistic Undo/Redo library created for personal projects. Use at your own risk!
 
 Whenever your application data changes to a new value, you can push the old value into the UndoStack using the `UndoStack::push` method. Calling `UndoStack::undo` will walk through the stack returning past_stack values, but possible values above the current position are still available via the `UndoStack::redo` method, which will cause the stack to walk back into the present.
