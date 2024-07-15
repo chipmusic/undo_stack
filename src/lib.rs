@@ -20,6 +20,11 @@
 //! - Does not force unwanted programming patterns, i.e. Command pattern.
 //! - Undo values can be stored in multiple stacks, if needed. A use case for this can be seen in modern 3D Animation software, where the Scene undo is usually separated from the Viewport undo.
 //! - Provides a simple trait (Undoable) with a single "restore" method that allows automatically re-applying the restored value to the application data.
+//!
+//! # Example
+//!
+//! Please download the repo and run "cargo run -p example" at the project root for a simple demonstration.
+//! The example is located under the "example" subfolder.
 
 #![warn(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
 #![no_std]
@@ -94,8 +99,6 @@ impl<T> UndoStack<T> where T:Undoable {
     /// The internal undo workhorse: moves the values to/from the appropriate stack.
     /// Returns an option with the top value being moved.
     fn move_undo_value(&mut self, project:&mut T::ProjectType, is_redo:bool) -> Option<&T> {
-        let past_len = self.past_stack.len();
-        let future_len = self.future_stack.len();
         // Set appropriate stacks, depending on "undo" or "redo"
         let from_stack:&mut Vec<T>;
         let to_stack:&mut Vec<T>;
@@ -112,13 +115,6 @@ impl<T> UndoStack<T> where T:Undoable {
             Some(value) => {
                 let old_value = value.restore(project);
                 to_stack.push(old_value);
-                #[cfg(feature = "std")]{
-                    if self.verbose{
-                        println!(
-                            "UndoStack: moving value. Past values:{}, future values:{}", past_len, future_len
-                        );
-                    }
-                }
             }
             None => {
                 #[cfg(feature = "std")]{

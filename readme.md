@@ -20,3 +20,7 @@ I created this crate for personal use, and to satisfy a few requirements I wishe
 - Does not force unwanted programming patterns, i.e. Command pattern.
 - Undo values can be stored in multiple stacks, if needed. A use case for this can be seen in modern 3D Animation software, where the Scene undo is usually separated from the Viewport undo.
 - Provides a simple trait (Undoable) with a single "restore" method that allows automatically re-applying the restored value to the application data.
+
+## Example
+
+Please download the repo and run "cargo run -p example" at the project root for a simple demonstration. The example is located under the "example" subfolder.
