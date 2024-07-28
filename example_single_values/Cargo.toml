@@ -1,5 +1,5 @@
 [package]
-name = "example"
+name = "example_single_values"
 version = "0.1.1"
 edition = "2021"
 

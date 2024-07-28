@@ -24,3 +24,5 @@ I created this crate for personal use, and to satisfy a few requirements I wishe
 ## Example
 
 Please download the repo and run "cargo run -p example" at the project root for a simple demonstration. The example is located under the "example" subfolder.
+
+You can also try "cargo run -p example_group" for a simple use of undo groups, i.e. undoing multiple values at once.

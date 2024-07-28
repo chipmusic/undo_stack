@@ -1,6 +1,6 @@
 use undo_stack::{UndoStack, Undoable};
 
-// Let's create a small test. Type definitions and trait implementation are below.
+// Let's create a small test. Type definitions and traits are below.
 fn main() {
     // Create data structures with initial values
     let mut undo_stack = UndoStack::<UndoValue>::new(true);
@@ -8,8 +8,8 @@ fn main() {
     println!("{:?}", proj);
 
     // Modify a few times, always pushing undo values before we enter new ones.
-    // Create an undo group before making all changes.
-    undo_stack.start_group();
+    // Sometimes we change all fields, sometimes just one,
+    // making sure we use the corresponding UndoValue variant.
     undo_stack.push(UndoValue::AllValues {
         a: proj.a,
         b: proj.b,
@@ -31,19 +31,40 @@ fn main() {
         a: proj.a,
         b: proj.b,
     });
-    undo_stack.finish_group();
     proj.a = 555;
     proj.b = 222.0;
     println!("{:?}", proj);
 
     // Test undo!
-    println!("\nPerforming single undo, value will match the initial one");
+    println!("\nPerforming undo ...");
     undo_stack.undo(&mut proj);
     println!("{:?}", proj);
 
-    println!("\nPerforming single redo, value will go all the way to the final one");
+    println!("\nPerforming undo ...");
+    undo_stack.undo(&mut proj);
+    println!("{:?}", proj);
+
+    println!("\nPerforming undo ...");
+    undo_stack.undo(&mut proj);
+    println!("{:?}", proj);
+
+    // With this last undo we're back to the initial values
+    println!("\nPerforming undo ...");
+    undo_stack.undo(&mut proj);
+    println!("{:?}", proj);
+
+    // No more undo values, will print a message if verbose=true and
+    // features = ["std"] is configured in cargo.toml
+    println!();
+    undo_stack.undo(&mut proj);
+
+    // Now we'll restore our final value by redoing all the way
+    println!("\nPerforming redo all the way...");
     undo_stack.redo(&mut proj);
-    println!("{:?}\n", proj);
+    undo_stack.redo(&mut proj);
+    undo_stack.redo(&mut proj);
+    undo_stack.redo(&mut proj);
+    println!("Final value: {:?}\n", proj);
 }
 
 // Our project type that holds the main data.
