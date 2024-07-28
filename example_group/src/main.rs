@@ -53,8 +53,8 @@ fn main() {
     println!("{:?}", proj);
 
     // Modify a few times, always pushing undo values before we enter new ones.
-    // Sometimes we change all fields, sometimes just one,
-    // making sure we use the corresponding UndoValue variant.
+    // Create an undo group before making all changes.
+    undo_stack.start_group();
     undo_stack.push(UndoValue::AllValues{a:proj.a, b:proj.b});
     proj.a = 50;
     proj.b = 10.0;
@@ -70,38 +70,18 @@ fn main() {
 
     // Final values
     undo_stack.push(UndoValue::AllValues{a:proj.a, b:proj.b});
+    undo_stack.finish_group();
     proj.a = 555;
     proj.b = 222.0;
     println!("{:?}", proj);
 
     // Test undo!
-    println!("\nPerforming undo ...");
+    println!("\nPerforming single undo, value will match the initial one");
     undo_stack.undo(&mut proj);
     println!("{:?}", proj);
 
-    println!("\nPerforming undo ...");
-    undo_stack.undo(&mut proj);
-    println!("{:?}", proj);
-
-    println!("\nPerforming undo ...");
-    undo_stack.undo(&mut proj);
-    println!("{:?}", proj);
-
-    // With this last undo we're back to the initial values
-    println!("\nPerforming undo ...");
-    undo_stack.undo(&mut proj);
-    println!("{:?}", proj);
-
-    // No more undo values, will print a message if verbose=true and
-    // features = ["std"] is configured in cargo.toml
-    println!();
-    undo_stack.undo(&mut proj);
-
-    // Now we'll restore our final value by redoing all the way
-    println!("\nPerforming redo all the way...");
+    println!("\nPerforming single redo, value will go all the way to the final one");
     undo_stack.redo(&mut proj);
-    undo_stack.redo(&mut proj);
-    undo_stack.redo(&mut proj);
-    undo_stack.redo(&mut proj);
-    println!("Final value: {:?}\n", proj);
+    println!("{:?}\n", proj);
+
 }
