@@ -2,7 +2,7 @@
 name = "undo_stack"
 description = "A minimal undo stack for user defined types"
 repository = "https://github.com/chipmusic/undo_stack"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 license = "MIT"
 
