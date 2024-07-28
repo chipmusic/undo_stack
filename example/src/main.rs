@@ -92,7 +92,7 @@ fn main() {
     undo_stack.undo(&mut proj);
     println!("{:?}", proj);
 
-    // No mode undo values, will print a message if verbose=true and
+    // No more undo values, will print a message if verbose=true and
     // features = ["std"] is configured in cargo.toml
     println!();
     undo_stack.undo(&mut proj);

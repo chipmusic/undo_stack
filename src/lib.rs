@@ -26,14 +26,15 @@
 //! Please download the repo and run "cargo run -p example" at the project root for a simple demonstration.
 //! The example is located under the "example" subfolder.
 
+
 #![warn(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
 #![no_std]
 #[cfg(feature = "std")] extern crate std;
 #[cfg(feature = "std")] pub use std::{print, println};
 
 extern crate alloc;
-
 use alloc::{vec, vec::Vec};
+
 
 /// When calling undo() or redo(), the restore() function is always called and applies
 /// this value TO the project and returns a value with the previous state FROM the project.
@@ -71,14 +72,25 @@ impl<T> UndoStack<T> where T:Undoable {
 
     /// Push a discrete "Undoable" value to the undo stack. Automatically clears future_stack redo values.
     pub fn push(&mut self, undo_value:T){
-        if let Some(top_value) = self.past_stack.last() {
-            // Skips if value is equal
-            if *top_value == undo_value {
-                return
-            }
-        }
+        // if let Some(top_value) = self.past_stack.last() {
+        //     // Skips if value is equal
+        //     if *top_value == undo_value {
+        //         return
+        //     }
+        // }
         self.past_stack.push(undo_value);
         self.future_stack.clear();
+    }
+
+
+    /// Checks if a new undo value is different from the one currently at the top of the stack.
+    /// Can be used to prevent pushing redundant values. In some cases, redundant values can be useful,
+    /// so this check is not performed by default.
+    pub fn value_is_different(&self, undo_value:T) -> bool {
+        if let Some(top_value) = self.past_stack.last() {
+            return *top_value != undo_value
+        }
+        false
     }
 
 
@@ -201,7 +213,6 @@ impl<T> UndoStack<T> where T:Undoable {
 
     /// Pops the top value in the redo stack (future_stack) and returns it  as an option.
     pub fn pop_redo(&mut self) -> Option<T> { self.future_stack.pop() }
-
 
 }
 
