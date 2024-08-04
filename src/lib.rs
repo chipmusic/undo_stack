@@ -10,6 +10,7 @@ extern crate alloc;
 use alloc::{vec, vec::Vec};
 
 // Helps to identify the beginning and end of a group versus a single value.
+#[derive(PartialEq)]
 enum Kind<T> {
     Group,
     Single(T),
@@ -35,8 +36,10 @@ where
     future_stack: Vec<Kind<T>>,
     past_stack: Vec<Kind<T>>,
     undo_buffer: Option<T>,
+    // Only a single open group is allowed at a time. That's why it's a single boolean, not a variant of "Kind".
     open_group: bool,
     /// Controls whether warning messages are printed or not. True by default.
+    /// Only works if feature "std" is enabled.
     pub verbose: bool,
 }
 
@@ -73,10 +76,7 @@ where
             self.past_stack.push(Kind::Group);
             self.open_group = true;
         } else {
-            #[cfg(feature = "std")]
-            {
-                println!("UndoStack: Warning, can't open new group before closing current one.");
-            }
+            self.maybe_print("UndoStack: Warning, can't open new group before closing current one.");
         }
     }
 
@@ -86,9 +86,27 @@ where
             self.past_stack.push(Kind::Group);
             self.open_group = false;
         } else {
-            #[cfg(feature = "std")]
-            {
-                println!("UndoStack: Warning, no open groups to close.");
+            self.maybe_print("UndoStack: Warning, no open groups to close.");
+        }
+    }
+
+    /// EXPERIMENTAL: Changes the last existing undo value into an open group state,
+    /// **IF** that value represents a group end. This allows retroactively pushing additional
+    /// single undo values to the group.
+    pub fn reopen_group(&mut self) {
+        if let Some(kind) = self.past_stack.pop(){
+            match kind {
+                Kind::Group => {
+                    if self.open_group {
+                        self.maybe_print("UndoStack: Warning, last value is already an open group. Skipping.");
+                    } else {
+                        self.open_group = true;
+                    }
+                },
+                Kind::Single(value) => {
+                    self.maybe_print("UndoStack: Warning, last value is not a group. Skipping.");
+                    self.past_stack.push(Kind::Single(value));
+                },
             }
         }
     }
@@ -189,18 +207,9 @@ where
     pub fn start_buffer(&mut self, value: T) {
         if let Some(ref value) = self.undo_buffer {
             self.push(value.clone());
-            if self.verbose {
-                #[cfg(feature = "std")]{
-                    println!("UndoStack: Warning, previous undo value was commited automatically")
-                }
-            }
+            self.maybe_print("UndoStack: Warning, previous undo value was commited automatically");
         }
-        if self.verbose {
-            #[cfg(feature = "std")]
-            {
-                println!("UndoStack: Initiating undo buffer...");
-            }
-        }
+        self.maybe_print("UndoStack: Initiating undo buffer...");
         self.undo_buffer = Some(value);
     }
 
@@ -209,14 +218,12 @@ where
         if let Some(ref value) = self.undo_buffer {
             if *value != final_value {
                 self.push(value.clone());
-            } else if self.verbose {
-                #[cfg(feature = "std")]{
-                    println!("UndoStack: Skipping commit, values don't differ.");
-                }
+            } else {
+                self.maybe_print("UndoStack: Skipping commit, values don't differ.");
             }
             self.undo_buffer = None;
-        } else if self.verbose {
-            // println!("UndoStack: Warning, buffer is empty and can't be committed.")
+        } else {
+            self.maybe_print("UndoStack: Warning, buffer is empty and can't be committed.");
         }
     }
 
@@ -224,6 +231,64 @@ where
     pub fn buffer(&self) -> Option<T> {
         self.undo_buffer.clone()
     }
+
+
+    fn maybe_print(&self, _text:&str) {
+        #[cfg(feature = "std")]{
+            if self.verbose {
+                println!("{}", _text);
+            }
+        }
+    }
+
+
+    // /// EXPERIMENTAL: Allows manipulating the last existing undo value into a group start,
+    // /// retroactively grouping undo values together.
+    // pub fn set_last_to_group_start(&mut self) {
+    //     if let Some(kind) = self.past_stack.pop(){
+    //         match kind {
+    //             Kind::Group => {
+    //                 if !self.open_group {
+    //                     self.open_group = true;
+    //                 } else {
+    //                     #[cfg(feature = "std")]{
+    //                         if self.verbose {
+    //                             println!("UndoStack: Warning, last value is already a group start. Skipping.");
+    //                         }
+    //                     }
+    //                 }
+    //             },
+    //             Kind::Single(value) => {
+    //                 self.start_group();
+    //                 self.past_stack.push(Kind::Single(value));
+    //             },
+    //         }
+    //     }
+    // }
+
+    // /// EXPERIMENTAL: Allows manipulating the last existing undo value into a group end.
+    // pub fn set_last_to_group_end(&mut self) {
+    //     if let Some(kind) = self.past_stack.pop(){
+    //         match kind {
+    //             Kind::Group => {
+    //                 if !self.open_group {
+    //                     #[cfg(feature = "std")]{
+    //                         if self.verbose {
+    //                             println!("UndoStack: Warning, last value is already a group end. Skipping.");
+    //                         }
+    //                     }
+    //                 } else {
+    //                     self.open_group = false;
+    //                 }
+    //             },
+    //             Kind::Single(value) => {
+    //                 self.past_stack.push(Kind::Single(value));
+    //                 self.finish_group();
+    //             },
+    //         }
+    //     }
+    // }
+
 
     // /// Pops the top value in the undo stack (past_stack) and returns it as an option.
     // pub fn pop_undo(&mut self) -> Option<T> {
