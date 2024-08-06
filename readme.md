@@ -12,8 +12,7 @@ When calling undo and redo, the restored values are automatically restored to an
 
 I created this crate for personal use, and to satisfy a few requirements I wished for:
 - As minimal as possible while still being useful.
-- No dependencies outside the standard library (only the "alloc" crate to use Vecs).
-- Does not force unwanted programming patterns, i.e. Command pattern.
+- No dependencies outside the standard "alloc" crate to use Vecs.
 - Undo values can be stored in multiple stacks, if needed. A use case for this can be seen in modern 3D Animation software, where the Scene undo is usually separated from the Viewport undo.
 - Provides a simple trait (Undoable) with a single "restore" method that allows automatically re-applying the restored value to the application data.
 
@@ -30,3 +29,7 @@ Another common situation is grouping multiple undo values, individually tracked,
 ## Examples
 
 Please download the repo and run *"cargo run -p example_single_values"* at the project root for a simple demonstration. You can also try *"cargo run -p example_group"* for a simple use of undo groups, i.e. undoing multiple values at once.
+
+## Features
+
+By default the "std" feature is disabled. To see warning messages you'll need to enable this feature (the "verbose" field is true by default). Messages prefixed by "Warning:" are helpful since they're evidence you're doing something wrong on your end - like closing a group before opening one - and ideally you should never see any of them.

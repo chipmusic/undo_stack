@@ -3,7 +3,7 @@ use undo_stack::{UndoStack, Undoable};
 // Let's create a small test. Type definitions and traits are below.
 fn main() {
     // Create data structures with initial values
-    let mut undo_stack = UndoStack::<UndoValue>::new(true);
+    let mut undo_stack = UndoStack::<UndoValue>::new();
     let mut proj = Project { a: 5, b: 1.0 };
     println!("{:?}", proj);
 
