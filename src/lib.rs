@@ -4,6 +4,7 @@
 
 #[cfg(feature = "std")]
 extern crate std;
+use core::fmt::Debug;
 #[cfg(feature = "std")]
 pub use std::{print, println};
 
@@ -11,7 +12,7 @@ extern crate alloc;
 use alloc::{vec, vec::Vec};
 
 // Helps to identify the beginning and end of a group versus a single value.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum Kind<T> {
     Group,
     Single(T),
@@ -244,9 +245,18 @@ where
         }
     }
 
+    /// Returns how many items are left in the past stack;
+    pub fn past_stack_len(&self) -> usize {
+        self.past_stack.len()
+    }
+
+    /// Returns how many items are left in the future stack;
+    pub fn future_stack_len(&self) -> usize {
+        self.future_stack.len()
+    }
+
     // Any method past here was deemed unnecessary on a real world project.
     // Keeping them around for quick reference just in case.
-    //
 
     // /// EXPERIMENTAL: Allows manipulating the last existing undo value into a group start,
     // /// retroactively grouping undo values together.
@@ -321,12 +331,6 @@ where
     //     )
     // }
 
-    // /// Returns an immutable reference to the past_stack vector (undo stack).
-    // pub fn past_stack(&self) -> &Vec<T> { &self.past_stack }
-
-    // /// Returns an immutable reference to the future_stack vector (redo stack).
-    // pub fn future_stack(&self) -> &Vec<T> { &self.future_stack }
-
     // /// Checks if a new undo value is different from the one currently at the top of the stack.
     // /// Can be used to prevent pushing redundant values. In some cases, redundant values can be useful,
     // /// so this check is not performed by default.
@@ -346,5 +350,18 @@ where
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T> Debug for UndoStack<T>
+where
+    T: Debug + Undoable,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "Past stack:\n{:?}\nFuture stack:\n{:?}",
+            self.past_stack, self.future_stack
+        )
     }
 }
