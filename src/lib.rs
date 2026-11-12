@@ -11,6 +11,9 @@ pub use std::{print, println};
 extern crate alloc;
 use alloc::{vec, vec::Vec};
 
+#[cfg(test)]
+mod test;
+
 // Helps to identify the beginning and end of a group versus a single value.
 #[derive(PartialEq, Debug)]
 enum Kind<T> {
@@ -85,7 +88,13 @@ where
     /// Finishes the previously started undo group.
     pub fn finish_group(&mut self) {
         if self.open_group {
-            self.past_stack.push(Kind::Group);
+            // Nothing pushed since it started: drop it, or undo would have a
+            // step that does nothing
+            if let Some(Kind::Group) = self.past_stack.last() {
+                self.past_stack.pop();
+            } else {
+                self.past_stack.push(Kind::Group);
+            }
             self.open_group = false;
         } else {
             self.log("Warning, no open groups to close.");
@@ -114,20 +123,28 @@ where
     }
 
     /// Performs undo, which will call the "restore" method on the restored value.
-    /// Returns an option with the undone value for convenience.
+    /// Returns the value redo would restore, which points at the same place
+    /// (for a group, its last one), or None if there was nothing to undo.
     pub fn undo(&mut self, project: &mut T::ProjectType) -> Option<&T> {
         self.move_undo_value(project, false)
     }
 
     /// Performs redo, which will call the "restore" method on the restored value.
-    /// Returns an option with the redone value for convenience.
+    /// Returns the value undo would restore, like `undo` does, or None if there
+    /// was nothing to redo.
     pub fn redo(&mut self, project: &mut T::ProjectType) -> Option<&T> {
         self.move_undo_value(project, true)
     }
 
     /// The internal undo workhorse: moves the values to/from the appropriate stack.
-    /// Returns an option with the top value being moved.
     fn move_undo_value(&mut self, project: &mut T::ProjectType, is_redo: bool) -> Option<&T> {
+        // Undoing inside an open group would take it apart and mix up its
+        // markers, merging it with older steps. Close it first.
+        if self.open_group {
+            self.log("Warning, closing the open group before undo/redo.");
+            self.finish_group();
+        }
+
         // Set appropriate stacks, depending on "undo" or "redo"
         let from_stack: &mut Vec<Kind<T>>;
         let to_stack: &mut Vec<Kind<T>>;
@@ -177,16 +194,21 @@ where
                         println!("UndoStack: No value to undo/redo.");
                     }
                 }
+                // Not the top of the other stack, which is from an older move
+                return None;
             }
         }
-        //Return an option with whatever is at the top of the stack
-        to_stack.last().map_or_else(
-            || None,
-            |kind| match kind {
-                Kind::Group => None,
-                Kind::Single(value) => Some(value),
+        // The value just moved. A group ends with its marker, so its last
+        // value is right under it.
+        let mut top = to_stack.iter().rev();
+        match top.next() {
+            Some(Kind::Single(value)) => Some(value),
+            Some(Kind::Group) => match top.next() {
+                Some(Kind::Single(value)) => Some(value),
+                _ => None,
             },
-        )
+            None => None,
+        }
     }
 
     /// Completely empties the undo and redo stacks and the temporary buffer.

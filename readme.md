@@ -28,7 +28,7 @@ Another common situation is grouping multiple undo values, individually tracked,
 
 ## Examples
 
-Please download the repo and run *"cargo run -p example_single_values"* at the project root for a simple demonstration. You can also try *"cargo run -p example_group"* for a simple use of undo groups, i.e. undoing multiple values at once.
+Please download the repo and run *"cargo run --example single_values"* at the project root for a simple demonstration. You can also try *"cargo run --example group"* for a simple use of undo groups, i.e. undoing multiple values at once. Add *"--features std"* to also see the stack's own messages.
 
 ## Features
 
