@@ -43,7 +43,7 @@ fn a_push_after_undo_clears_redo() {
     stack.undo(&mut p);
     edit(&mut stack, &mut p, 1, 5);
     assert_eq!(stack.future_stack_len(), 0);
-    assert!(stack.redo(&mut p).is_none());
+    assert!(stack.redo(&mut p).next().is_none());
     assert_eq!(p, [0, 5, 0]);
 }
 
@@ -93,27 +93,46 @@ fn undo_inside_an_open_group_closes_it_first() {
 }
 
 #[test]
-fn undo_returns_where_it_happened_for_a_single_value_and_a_group() {
+fn a_group_is_open_until_finished_or_undone() {
+    let (mut stack, mut p) = (UndoStack::new(), [0; 3]);
+    stack.start_group();
+    assert!(stack.is_group_open());
+    stack.finish_group();
+    assert!(!stack.is_group_open());
+
+    stack.start_group();
+    edit(&mut stack, &mut p, 0, 1);
+    stack.undo(&mut p);
+    assert!(!stack.is_group_open());
+}
+
+/// Where each value of an undo or redo group points
+fn places(group: Group<Set>) -> Vec<usize> {
+    group.map(|set| set.at).collect()
+}
+
+#[test]
+fn undo_returns_every_value_it_moved_for_a_single_value_and_a_group() {
     let (mut stack, mut p) = (UndoStack::new(), [0; 3]);
     edit(&mut stack, &mut p, 0, 1);
     stack.start_group();
     edit(&mut stack, &mut p, 1, 1);
     edit(&mut stack, &mut p, 2, 1);
     stack.finish_group();
-    // The group's last value restored was the first one pushed, at [1]
-    assert_eq!(stack.undo(&mut p).map(|set| set.at), Some(1));
-    assert_eq!(stack.undo(&mut p).map(|set| set.at), Some(0));
-    assert_eq!(stack.redo(&mut p).map(|set| set.at), Some(0));
+    assert_eq!(places(stack.undo(&mut p)), [2, 1]); // the group, last pushed first
+    assert_eq!(places(stack.undo(&mut p)), [0]);
+    assert_eq!(places(stack.redo(&mut p)), [0]);
+    assert_eq!(places(stack.redo(&mut p)), [1, 2]);
 }
 
 #[test]
-fn undo_with_nothing_left_returns_none() {
+fn undo_with_nothing_left_returns_an_empty_group() {
     let (mut stack, mut p) = (UndoStack::new(), [0; 3]);
-    assert!(stack.undo(&mut p).is_none());
+    assert!(stack.undo(&mut p).next().is_none());
     edit(&mut stack, &mut p, 0, 1);
     stack.undo(&mut p);
     // The redo stack has a value now, but it's not an undo
-    assert!(stack.undo(&mut p).is_none());
+    assert!(stack.undo(&mut p).next().is_none());
     assert_eq!(p, [0, 0, 0]);
 }
 

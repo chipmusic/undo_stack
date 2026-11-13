@@ -17,7 +17,7 @@ mod test;
 // Helps to identify the beginning and end of a group versus a single value.
 #[derive(PartialEq, Debug)]
 enum Kind<T> {
-    Group,
+    GroupMarker,
     Single(T),
 }
 
@@ -31,6 +31,27 @@ where
 {
     type ProjectType;
     fn restore(self, target: &mut Self::ProjectType) -> Self;
+}
+
+/// What one undo or redo moved, in the order it was restored. A single value
+/// is a group of one, and nothing to move is an empty group.
+pub struct Group<'a, T> {
+    kinds: &'a [Kind<T>],
+}
+
+impl<'a, T> Iterator for Group<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        // Skips the group markers
+        while let Some((first, rest)) = self.kinds.split_first() {
+            self.kinds = rest;
+            if let Kind::Single(value) = first {
+                return Some(value);
+            }
+        }
+        None
+    }
 }
 
 /// The main struct where all the undo values are kept.
@@ -78,7 +99,7 @@ where
     /// Starts a "group" with multiple undo values that can be undone simultaneously.
     pub fn start_group(&mut self) {
         if !self.open_group {
-            self.past_stack.push(Kind::Group);
+            self.past_stack.push(Kind::GroupMarker);
             self.open_group = true;
         } else {
             self.log("Warning, can't open new group before closing current one.");
@@ -90,15 +111,20 @@ where
         if self.open_group {
             // Nothing pushed since it started: drop it, or undo would have a
             // step that does nothing
-            if let Some(Kind::Group) = self.past_stack.last() {
+            if let Some(Kind::GroupMarker) = self.past_stack.last() {
                 self.past_stack.pop();
             } else {
-                self.past_stack.push(Kind::Group);
+                self.past_stack.push(Kind::GroupMarker);
             }
             self.open_group = false;
         } else {
             self.log("Warning, no open groups to close.");
         }
+    }
+
+    /// True between start_group and finish_group. Undo and redo close it too.
+    pub fn is_group_open(&self) -> bool {
+        self.open_group
     }
 
     /// EXPERIMENTAL: Changes the last existing undo value into an open group state,
@@ -107,7 +133,7 @@ where
     pub fn reopen_group(&mut self) {
         if let Some(kind) = self.past_stack.pop() {
             match kind {
-                Kind::Group => {
+                Kind::GroupMarker => {
                     if self.open_group {
                         self.log("Warning, last value is already an open group. Skipping.");
                     } else {
@@ -123,21 +149,21 @@ where
     }
 
     /// Performs undo, which will call the "restore" method on the restored value.
-    /// Returns the value redo would restore, which points at the same place
-    /// (for a group, its last one), or None if there was nothing to undo.
-    pub fn undo(&mut self, project: &mut T::ProjectType) -> Option<&T> {
+    /// Returns the group redo would restore, which points at the places just
+    /// changed. Empty if there was nothing to undo.
+    pub fn undo(&mut self, project: &mut T::ProjectType) -> Group<'_, T> {
         self.move_undo_value(project, false)
     }
 
     /// Performs redo, which will call the "restore" method on the restored value.
-    /// Returns the value undo would restore, like `undo` does, or None if there
+    /// Returns the group undo would restore, like `undo` does. Empty if there
     /// was nothing to redo.
-    pub fn redo(&mut self, project: &mut T::ProjectType) -> Option<&T> {
+    pub fn redo(&mut self, project: &mut T::ProjectType) -> Group<'_, T> {
         self.move_undo_value(project, true)
     }
 
     /// The internal undo workhorse: moves the values to/from the appropriate stack.
-    fn move_undo_value(&mut self, project: &mut T::ProjectType, is_redo: bool) -> Option<&T> {
+    fn move_undo_value(&mut self, project: &mut T::ProjectType, is_redo: bool) -> Group<'_, T> {
         // Undoing inside an open group would take it apart and mix up its
         // markers, merging it with older steps. Close it first.
         if self.open_group {
@@ -155,17 +181,19 @@ where
             from_stack = &mut self.past_stack;
             to_stack = &mut self.future_stack;
         };
+        // Everything this move pushes goes from here on
+        let start = to_stack.len();
 
         // Process undo value and location
         match from_stack.pop() {
             Some(kind) => match kind {
-                Kind::Group => {
-                    to_stack.push(Kind::Group);
+                Kind::GroupMarker => {
+                    to_stack.push(Kind::GroupMarker);
                     loop {
                         let next_value = from_stack.pop();
                         match next_value {
-                            Some(Kind::Group) => {
-                                to_stack.push(Kind::Group);
+                            Some(Kind::GroupMarker) => {
+                                to_stack.push(Kind::GroupMarker);
                                 break;
                             }
                             Some(Kind::Single(value)) => {
@@ -194,20 +222,11 @@ where
                         println!("UndoStack: No value to undo/redo.");
                     }
                 }
-                // Not the top of the other stack, which is from an older move
-                return None;
             }
         }
-        // The value just moved. A group ends with its marker, so its last
-        // value is right under it.
-        let mut top = to_stack.iter().rev();
-        match top.next() {
-            Some(Kind::Single(value)) => Some(value),
-            Some(Kind::Group) => match top.next() {
-                Some(Kind::Single(value)) => Some(value),
-                _ => None,
-            },
-            None => None,
+        // The values just moved, with a group's markers. Empty if none were.
+        Group {
+            kinds: &to_stack[start..],
         }
     }
 
@@ -285,7 +304,7 @@ where
     // pub fn set_last_to_group_start(&mut self) {
     //     if let Some(kind) = self.past_stack.pop(){
     //         match kind {
-    //             Kind::Group => {
+    //             Kind::GroupMarker => {
     //                 if !self.open_group {
     //                     self.open_group = true;
     //                 } else {
@@ -308,7 +327,7 @@ where
     // pub fn set_last_to_group_end(&mut self) {
     //     if let Some(kind) = self.past_stack.pop(){
     //         match kind {
-    //             Kind::Group => {
+    //             Kind::GroupMarker => {
     //                 if !self.open_group {
     //                     #[cfg(feature = "std")]{
     //                         if self.verbose {
@@ -333,7 +352,7 @@ where
     //         || None,
     //         |kind| {
     //             match kind {
-    //                 Kind::Group => None,
+    //                 Kind::GroupMarker => None,
     //                 Kind::Single(value) => Some(value),
     //             }
     //         }
@@ -346,7 +365,7 @@ where
     //         || None,
     //         |kind| {
     //             match kind {
-    //                 Kind::Group => None,
+    //                 Kind::GroupMarker => None,
     //                 Kind::Single(value) => Some(value),
     //             }
     //         }
